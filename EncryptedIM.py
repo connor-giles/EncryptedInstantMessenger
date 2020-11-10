@@ -4,11 +4,11 @@ import socket
 import select
 import sys
 import hashlib
-import os
+import base64
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from Crypto.Hash import SHA1, HMAC
-from Crypto.Util.Padding import pad
+from Crypto.Util.Padding import pad, unpad
 
 # calculates 128 bit hash for confkey
 def encrypt_confKey_128(stringConfKey):
@@ -18,10 +18,35 @@ def encrypt_confKey_128(stringConfKey):
     sha1Hash = sha1Hash.hexdigest()[:-8] # trims confkey to 128 bits string
     return sha1Hash.encode()
 
-def encrypt_HMAC_128(stringAuthKey):
-    authHMAC = HMAC.new(stringAuthKey.encode(), b'hello', SHA1)
+# encrypts and trims to get appropriate HMAC
+def encrypt_HMAC(stringAuthKey, message):
+    authHMAC = HMAC.new(stringAuthKey.encode(), message.encode(), SHA1)
     authHMAC = authHMAC.hexdigest()[:-8] # trims to 128 bits
     return authHMAC.encode()
+
+# def decrypt_HMAC():
+#     return
+
+def encrypt_CBC(encryptedCKey, messageToSend, HMAC):
+    IV = get_random_bytes(16) # creates a random Initialization vector
+    encryptionCalculator = AES.new(encryptedCKey, AES.MODE_CBC, IV)
+    cipherText = encryptionCalculator.encrypt(pad(messageToSend.encode(), AES.block_size))
+    print("Original CipherText: {}".format(cipherText))
+    print("Original IV: {}".format(IV))
+    cipherTextWithExtras = HMAC + IV + cipherText
+    return cipherTextWithExtras
+
+def decrypt_CBC(encryptedCKey, encryptedMessage):
+    sentHMAC = encryptedMessage[:32]
+    print("Sent HMAC: {}".format(sentHMAC))
+    sentMessageAndIV = encryptedMessage[32:]
+    print("Sent IV: {}".format(sentMessageAndIV[:16]))
+    sentMessage = sentMessageAndIV[16:]
+    print("Sent Message: {}".format(sentMessage))
+    # cipherText = AES.new(encryptedConfKey, AES.MODE_CBC, testIV)
+    # plainText = unpad(cipherText.decrypt(encryptedMessage), AES.block_size)
+    # return plainText
+
 
 
 
@@ -48,20 +73,21 @@ if sys.argv[1] == '-s':
         confKey = str(sys.argv[4])
         authKey = str(sys.argv[6])
 
+    IV = get_random_bytes(16)
 
-    encryptedConKey = encrypt_confKey_128(confKey)
-
-    print("128 bit confKey: {}".format(encryptedConKey))
+    encryptedConfKey = encrypt_confKey_128(confKey)
+    #print("128 bit confKey: {}".format(encryptedConfKey))
   
-
-    encryptedHMAC = encrypt_HMAC_128(authKey)
-
-    print("128 bit HMAC: {}".format(encryptedHMAC))
+    encryptedHMAC = encrypt_HMAC(authKey, "Test message")
+    #print("128 bit HMAC: {}".format(encryptedHMAC))
     
-    # encryptionCalculator = AES.new(confKey128, AES.MODE_CBC, get_random_bytes(16))
-    # cipherText = encryptionCalculator.encrypt(pad(b"secret message", AES.block_size))
+    cipherText = encrypt_CBC(encryptedConfKey, "Test message", encryptedHMAC)
+    print("CipherText With Everything: {}".format(cipherText))
 
-    # print(cipherText)
+    decrypt_CBC(encryptedConfKey, cipherText)
+
+    # plainText = decrypt_CBC(encryptedConfKey, cipherText, IV)
+    # print("PlainText: {}".format(plainText))
 
 
 
