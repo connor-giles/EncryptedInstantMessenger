@@ -3,8 +3,21 @@ from signal import SIGINT
 import socket
 import select
 import sys
-#from Crypto.Cipher import AES
-#from Crypto.Random import get_random_bytes
+import hashlib
+import os
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
+from Crypto.Hash import SHA1, HMAC
+
+
+def calculate_sha1(strValue):
+    sha1Hash = SHA1.new()
+    testBytes = strValue.encode()
+    sha1Hash.update(testBytes)
+    return sha1Hash
+
+
+
 
 # sets up the socket info
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -21,18 +34,28 @@ if sys.argv[1] == '-s':
         portNum = 9999
         confKey = str(sys.argv[3])
         authKey = str(sys.argv[5])
-        print('Portnum: {}'.format(portNum))
-        print('Confkey: {}'.format(confKey))
-        print('Authkey: {}'.format(authKey))
 
+    # implies port was given, binds the port to user input
     else:
-        # bind the port to user input
         portNum = int(sys.argv[2])
         confKey = str(sys.argv[4])
         authKey = str(sys.argv[6])
-        print('Portnum: {}'.format(portNum))
-        print('Confkey: {}'.format(confKey))
-        print('Authkey: {}'.format(authKey))
+
+    confHash = calculate_sha1(confKey) # calculates hash for confkey
+    authHash = calculate_sha1(authKey) # calculates hash for authkey
+
+    trimmedConf = confHash.hexdigest()[:-8] # trims confkey to 128 bits string
+    trimmedAuth = authHash.hexdigest()[:-8] # trims authkey to 128 bits string
+
+    confKey128 = trimmedConf.encode() # convets the 128 bit string to bytes
+    authKey128 = trimmedAuth.encode() # convets the 128 bit string to bytes
+
+    print(confKey128)
+    print(authKey128)
+
+    #AES.new(strConf, AES.MODE_CBC, get_random_bytes(16))   
+
+
 
     # server.bind(('127.0.0.1', portNum))
     # server.listen(1)
@@ -76,20 +99,12 @@ elif sys.argv[1] == '-c':
         portNum = 9999
         confKey = str(sys.argv[4])
         authKey = str(sys.argv[6])
-        print('Hostname: {}'.format(hostname))
-        print('Portnum: {}'.format(portNum))
-        print('Confkey: {}'.format(confKey))
-        print('Authkey: {}'.format(authKey))
 
+    # implies port was given, binds the port to user input
     else:
-        # bind the port to user input
         portNum = int(sys.argv[3])
         confKey = str(sys.argv[5])
         authKey = str(sys.argv[7])
-        print('Hostname: {}'.format(hostname))
-        print('Portnum: {}'.format(portNum))
-        print('Confkey: {}'.format(confKey))
-        print('Authkey: {}'.format(authKey))
 
     # server.connect((hostname, portNum))
 
