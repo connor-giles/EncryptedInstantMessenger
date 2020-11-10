@@ -8,13 +8,20 @@ import os
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from Crypto.Hash import SHA1, HMAC
+from Crypto.Util.Padding import pad
 
-
-def calculate_sha1(strValue):
+# calculates 128 bit hash for confkey
+def encrypt_confKey_128(stringConfKey):
     sha1Hash = SHA1.new()
-    testBytes = strValue.encode()
-    sha1Hash.update(testBytes)
-    return sha1Hash
+    byteString = stringConfKey.encode()
+    sha1Hash.update(byteString)
+    sha1Hash = sha1Hash.hexdigest()[:-8] # trims confkey to 128 bits string
+    return sha1Hash.encode()
+
+def encrypt_HMAC_128(stringAuthKey):
+    authHMAC = HMAC.new(stringAuthKey.encode(), b'hello', SHA1)
+    authHMAC = authHMAC.hexdigest()[:-8] # trims to 128 bits
+    return authHMAC.encode()
 
 
 
@@ -41,19 +48,20 @@ if sys.argv[1] == '-s':
         confKey = str(sys.argv[4])
         authKey = str(sys.argv[6])
 
-    confHash = calculate_sha1(confKey) # calculates hash for confkey
-    authHash = calculate_sha1(authKey) # calculates hash for authkey
 
-    trimmedConf = confHash.hexdigest()[:-8] # trims confkey to 128 bits string
-    trimmedAuth = authHash.hexdigest()[:-8] # trims authkey to 128 bits string
+    encryptedConKey = encrypt_confKey_128(confKey)
 
-    confKey128 = trimmedConf.encode() # convets the 128 bit string to bytes
-    authKey128 = trimmedAuth.encode() # convets the 128 bit string to bytes
+    print("128 bit confKey: {}".format(encryptedConKey))
+  
 
-    print(confKey128)
-    print(authKey128)
+    encryptedHMAC = encrypt_HMAC_128(authKey)
 
-    #AES.new(strConf, AES.MODE_CBC, get_random_bytes(16))   
+    print("128 bit HMAC: {}".format(encryptedHMAC))
+    
+    # encryptionCalculator = AES.new(confKey128, AES.MODE_CBC, get_random_bytes(16))
+    # cipherText = encryptionCalculator.encrypt(pad(b"secret message", AES.block_size))
+
+    # print(cipherText)
 
 
 
