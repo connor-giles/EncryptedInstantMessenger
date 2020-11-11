@@ -43,11 +43,9 @@ def decrypt_CBC(encryptedCKey, encryptedMessage, origAuthKey):
     # gets rest of message and parses IV from it 
     sentMessageAndIV = encryptedMessage[32:]
     sentIV = sentMessageAndIV[:16]
-    print("Sent IV: {}".format(sentIV))
 
     # gets the encrypted message itself
     sentMessage = sentMessageAndIV[16:]
-    print("Sent Message: {}".format(sentMessage))
 
     # creates and AES object to decrypt
     cipherText = AES.new(encryptedCKey, AES.MODE_CBC, sentIV)
@@ -56,8 +54,6 @@ def decrypt_CBC(encryptedCKey, encryptedMessage, origAuthKey):
 
     # calculate HMAC and compare to the HMAC sent
     personalHMAC = encrypt_HMAC(origAuthKey, plainText).decode()
-    print("Sent HMAC: {}".format(sentHMAC))
-    print("Personal HMAC: {}".format(personalHMAC))
 
     if(personalHMAC != sentHMAC):
         print("The HMAC's do not match!")
@@ -92,47 +88,46 @@ if sys.argv[1] == '-s':
         authKey = str(sys.argv[6])
 
     encryptedConfKey = encrypt_confKey_128(confKey)
-    encryptedHMAC = encrypt_HMAC(authKey, "Test message")
-    cipherText = encrypt_CBC(encryptedConfKey, "Test message", encryptedHMAC)
 
-    pText = decrypt_CBC(encryptedConfKey, cipherText, authKey)
-    print("PlainText: {}".format(pText))
+    #pText = decrypt_CBC(encryptedConfKey, cipherText, authKey)
 
-    # server.bind(('127.0.0.1', portNum))
-    # server.listen(1)
-    # connection, address = server.accept()
+    server.bind(('127.0.0.1', portNum))
+    server.listen(1)
+    connection, address = server.accept()
 
-    # while True: 
+    while True: 
   
-    #     # maintains a list of possible input streams 
-    #     read_options = [sys.stdin, connection] 
+        # maintains a list of possible input streams 
+        read_options = [sys.stdin, connection] 
 
-    #     r, w, e = select.select(read_options,[],[]) 
+        r, w, e = select.select(read_options,[],[]) 
 
-    #     for sockets in r: 
+        for sockets in r: 
 
-    #         # Handles server message sending
-    #         if sockets is connection: 
-    #             encodedMessage = sockets.recv(1024)
-    #             message = encodedMessage.decode()
+            # Handles server message sending
+            if sockets is connection: 
+                message = sockets.recv(1024)
 
-    #             if len(message) == 0:
-    #                 sys.exit()  
-    #             print(message)
+                if len(message) == 0:
+                    sys.exit() 
 
-    #         # Handles client message 
-    #         else: 
-    #             unencodedMessage = sys.stdin.readline() # gets the user input including the escape character
-    #             message = unencodedMessage.encode()
-    #             connection.send(message) 
+                messageDecrypted = decrypt_CBC(encryptedConfKey, message, authKey)
+                print(messageDecrypted)
 
-    # connection.close()
+            # Handles client message 
+            else: 
+                userMessage = sys.stdin.readline() # gets the user input including the escape character
+                encryptedHMAC = encrypt_HMAC(authKey, userMessage)
+                cipherText = encrypt_CBC(encryptedConfKey, userMessage, encryptedHMAC)
+                connection.send(cipherText) 
+
+    connection.close()
 
     
 
 # Handles client side
 elif sys.argv[1] == '-c':
-    #print('This terminal is running the client-side')
+
     hostname = sys.argv[2]
 
     # implies no port was given, binds the port to 9999
@@ -147,31 +142,34 @@ elif sys.argv[1] == '-c':
         confKey = str(sys.argv[5])
         authKey = str(sys.argv[7])
 
-    # server.connect((hostname, portNum))
+    encryptedConfKey = encrypt_confKey_128(confKey)
+    server.connect((hostname, portNum))
 
-    # while True: 
+    while True: 
   
-    #     # maintains a list of possible input streams 
-    #     read_options = [sys.stdin, server] 
+        # maintains a list of possible input streams 
+        read_options = [sys.stdin, server] 
 
-    #     r, w, e = select.select(read_options,[],[]) 
+        r, w, e = select.select(read_options,[],[]) 
   
-    #     for sockets in r: 
+        for sockets in r: 
 
-    #         # Handles server message sending
-    #         if sockets is server: 
-    #             encodedMessage = sockets.recv(1024)
-    #             message = encodedMessage.decode()
+            # Handles server message sending
+            if sockets is server: 
+                message = sockets.recv(1024)
 
-    #             if len(message) == 0:
-    #                 sys.exit() 
-    #             print(message)
+                if len(message) == 0:
+                    sys.exit() 
 
-    #         # Handles client message 
-    #         else: 
-    #             unencodedMessage = sys.stdin.readline() # gets the user input including the escape character
-    #             message = unencodedMessage.encode()
-    #             server.send(message)  
+                messageDecrypted = decrypt_CBC(encryptedConfKey, message, authKey)
+                print(messageDecrypted)
+
+            # Handles client message 
+            else: 
+                userMessage = sys.stdin.readline() # gets the user input including the escape character
+                encryptedHMAC = encrypt_HMAC(authKey, userMessage)
+                cipherText = encrypt_CBC(encryptedConfKey, userMessage, encryptedHMAC)
+                server.send(cipherText) 
 
 
 # Errors
