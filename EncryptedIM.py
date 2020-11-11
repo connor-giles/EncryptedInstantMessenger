@@ -31,21 +31,39 @@ def encrypt_CBC(encryptedCKey, messageToSend, HMAC):
     IV = get_random_bytes(16) # creates a random Initialization vector
     encryptionCalculator = AES.new(encryptedCKey, AES.MODE_CBC, IV)
     cipherText = encryptionCalculator.encrypt(pad(messageToSend.encode(), AES.block_size))
-    print("Original CipherText: {}".format(cipherText))
-    print("Original IV: {}".format(IV))
+    # print("Original CipherText: {}".format(cipherText))
+    # print("Original IV: {}".format(IV))
     cipherTextWithExtras = HMAC + IV + cipherText
     return cipherTextWithExtras
 
-def decrypt_CBC(encryptedCKey, encryptedMessage):
-    sentHMAC = encryptedMessage[:32]
-    print("Sent HMAC: {}".format(sentHMAC))
+def decrypt_CBC(encryptedCKey, encryptedMessage, origAuthKey):
+    # gets the HMAC sent from the sender
+    sentHMAC = encryptedMessage[:32].decode() 
+
+    # gets rest of message and parses IV from it 
     sentMessageAndIV = encryptedMessage[32:]
-    print("Sent IV: {}".format(sentMessageAndIV[:16]))
+    sentIV = sentMessageAndIV[:16]
+    print("Sent IV: {}".format(sentIV))
+
+    # gets the encrypted message itself
     sentMessage = sentMessageAndIV[16:]
     print("Sent Message: {}".format(sentMessage))
-    # cipherText = AES.new(encryptedConfKey, AES.MODE_CBC, testIV)
-    # plainText = unpad(cipherText.decrypt(encryptedMessage), AES.block_size)
-    # return plainText
+
+    # creates and AES object to decrypt
+    cipherText = AES.new(encryptedCKey, AES.MODE_CBC, sentIV)
+    plainText = unpad(cipherText.decrypt(sentMessage), AES.block_size)
+    plainText = plainText.decode() # returns it back to a string from bytes
+
+    # calculate HMAC and compare to the HMAC sent
+    personalHMAC = encrypt_HMAC(origAuthKey, plainText).decode()
+    print("Sent HMAC: {}".format(sentHMAC))
+    print("Personal HMAC: {}".format(personalHMAC))
+
+    if(personalHMAC != sentHMAC):
+        print("The HMAC's do not match!")
+        sys.exit()
+
+    return plainText
 
 
 
@@ -73,23 +91,12 @@ if sys.argv[1] == '-s':
         confKey = str(sys.argv[4])
         authKey = str(sys.argv[6])
 
-    IV = get_random_bytes(16)
-
     encryptedConfKey = encrypt_confKey_128(confKey)
-    #print("128 bit confKey: {}".format(encryptedConfKey))
-  
     encryptedHMAC = encrypt_HMAC(authKey, "Test message")
-    #print("128 bit HMAC: {}".format(encryptedHMAC))
-    
     cipherText = encrypt_CBC(encryptedConfKey, "Test message", encryptedHMAC)
-    print("CipherText With Everything: {}".format(cipherText))
 
-    decrypt_CBC(encryptedConfKey, cipherText)
-
-    # plainText = decrypt_CBC(encryptedConfKey, cipherText, IV)
-    # print("PlainText: {}".format(plainText))
-
-
+    pText = decrypt_CBC(encryptedConfKey, cipherText, authKey)
+    print("PlainText: {}".format(pText))
 
     # server.bind(('127.0.0.1', portNum))
     # server.listen(1)
@@ -108,7 +115,7 @@ if sys.argv[1] == '-s':
     #         if sockets is connection: 
     #             encodedMessage = sockets.recv(1024)
     #             message = encodedMessage.decode()
-    #             #print('<{}>{}'.format(address[0], message))
+
     #             if len(message) == 0:
     #                 sys.exit()  
     #             print(message)
@@ -155,7 +162,7 @@ elif sys.argv[1] == '-c':
     #         if sockets is server: 
     #             encodedMessage = sockets.recv(1024)
     #             message = encodedMessage.decode()
-    #             #print('<Server>{}'.format(message))
+
     #             if len(message) == 0:
     #                 sys.exit() 
     #             print(message)
@@ -169,7 +176,6 @@ elif sys.argv[1] == '-c':
 
 # Errors
 else:
-    #print('Error: did not specify where to run')
     sys.exit()
 
 server.close()
