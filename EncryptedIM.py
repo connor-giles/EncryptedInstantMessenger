@@ -24,15 +24,10 @@ def encrypt_HMAC(stringAuthKey, message):
     authHMAC = authHMAC.hexdigest()[:-8] # trims to 128 bits
     return authHMAC.encode()
 
-# def decrypt_HMAC():
-#     return
-
 def encrypt_CBC(encryptedCKey, messageToSend, HMAC):
     IV = get_random_bytes(16) # creates a random Initialization vector
     encryptionCalculator = AES.new(encryptedCKey, AES.MODE_CBC, IV)
     cipherText = encryptionCalculator.encrypt(pad(messageToSend.encode(), AES.block_size))
-    # print("Original CipherText: {}".format(cipherText))
-    # print("Original IV: {}".format(IV))
     cipherTextWithExtras = HMAC + IV + cipherText
     return cipherTextWithExtras
 
@@ -88,8 +83,6 @@ if sys.argv[1] == '-s':
         authKey = str(sys.argv[6])
 
     encryptedConfKey = encrypt_confKey_128(confKey)
-
-    #pText = decrypt_CBC(encryptedConfKey, cipherText, authKey)
 
     server.bind(('127.0.0.1', portNum))
     server.listen(1)

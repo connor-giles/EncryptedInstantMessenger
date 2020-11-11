@@ -1,0 +1,29 @@
+For part4 of the assignment, I wrote several functions to be used when sending and recieving messages. 
+I would start the session by encrypting the confkey on both the server and the client, as well as trimming
+it to 128 bits. This was done in the encrypt_confKey_128 function. 
+
+Next if the user input information on either the client or the server side, I would first encrypt the HMAC 
+using encrypt_HMAC to be sent with the message. Next I would create the ciphertext using CBC with a randomly 
+generated IV that was created using pycryptodome's get_random_bytes function. It would also use the encrypted
+confkey to create the ciphertext. This collection of infomation would be sent over the connection in the following
+format...
+
+HMAC + IV + MESSAGE
+
+The first 128 bits, or 32 characters of the encrypted message would be the HMAC. This could be later compared to determined if the
+message had been tampered with at all. The IV would then be extracted from the next 64 bits, or 16 bytes, to be used
+for decrypted of the CBC message. Without this IV, it is not possible to decrypt the CBC message. Lastly, the remaining
+part of the encrypted message is the ciphertext which was plugged into the decrypt_CBC function and eventually printed to 
+the console.
+
+So the message below is an example of a message that would be sent over the socket...
+
+00b5acec7be4be4ac3d81f88c0360379641b\x9e\x94\xec\xdf\xd9\x8b\xcdq^\x155&\xdc!\xa5\x01\xa5\xd8Q\x9b\xd8\x9c\xf6A{\x05\x0c\xf6
+
+This message can be broken down in the manner I mentioned above...
+
+00b5acec7be4be4ac3d81f88c0360379 -----> Encrypted HMAC
+641b\x9e\x94\xec\xdf\xd9\x8b\xcdq^\x155& -----> IV
+\xdc!\xa5\x01\xa5\xd8Q\x9b\xd8\x9c\xf6A{\x05\x0c\xf6 -----> Encrypted message
+
+Hopefully this give an easy to understand explanation on how my messages are being sent.
